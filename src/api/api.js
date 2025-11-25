@@ -1,31 +1,33 @@
 import axios from 'axios';
 
 const resolvedBackendBaseUrl = (() => {
-  const envUrl = import.meta?.env?.VITE_BACKEND_URL;
+  // Use VITE_BACKEND_URL if defined in .env
+  const envUrl = import.meta.env?.VITE_BACKEND_URL || 'https://blogflowback.onrender.com';
   if (envUrl) {
     return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
   }
 
-  // When running Vite locally, talk directly to the bundled PHP server
-  if (import.meta?.env?.DEV) {
+  // For local development
+  if (import.meta.env?.DEV) {
     return 'http://localhost:3002';
   }
 
-  // If this runs in a browser without explicit config, reuse the current origin
+  // Fallback to current origin
   if (typeof window !== 'undefined' && window.location.origin) {
-    return window.location.origin.replace(/\/$/, '');
+    return window.location.origin;
   }
 
-  return '/';
+  return 'https://blogflowback.onrender.com'; // Default fallback
 })();
 
 export const backendBaseUrl = resolvedBackendBaseUrl;
 
 const api = axios.create({
   baseURL: resolvedBackendBaseUrl, // Use Vite proxy in development ("/"), env in prod
-  withCredentials: true,
   headers: {
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
   }
 });
 
