@@ -1,24 +1,43 @@
 import axios from 'axios';
 
-// Always use live backend URL from .env.production
-const backendBaseUrl = import.meta.env.VITE_BACKEND_URL;
+const resolvedBackendBaseUrl = (() => {
+  const envUrl = import.meta?.env?.VITE_BACKEND_URL;
+  if (envUrl) {
+    return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
+  }
+
+  // When running Vite locally, talk directly to the bundled PHP server
+  if (import.meta?.env?.DEV) {
+    return 'http://localhost:3002';
+  }
+
+  // If this runs in a browser without explicit config, reuse the current origin
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin.replace(/\/$/, '');
+  }
+
+  return '/';
+})();
+
+export const backendBaseUrl = resolvedBackendBaseUrl;
 
 const api = axios.create({
-  baseURL: backendBaseUrl,
+  baseURL: resolvedBackendBaseUrl, // Use Vite proxy in development ("/"), env in prod
   withCredentials: true,
   headers: {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json'
+    'Accept': 'application/json'
   }
 });
 
 api.interceptors.request.use((config) => {
   if (config.data instanceof FormData) {
-    delete config.headers['Content-Type']; // Let browser handle multipart boundary
+    // Let the browser/axios set the multipart boundary automatically
+    delete config.headers['Content-Type'];
+  } else if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
   }
   return config;
 });
-
 
 function handleError(err) {
   if (err?.response?.data) return Promise.reject(err.response.data);
